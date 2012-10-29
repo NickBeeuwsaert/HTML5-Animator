@@ -1,0 +1,1 @@
+{"ts":1351470563771,"silentsave":true,"restoring":false,"patch":[[{"diffs":[[1,"var openFile = function(url, callback){\n    var req = new XMLHttpRequest();\n    req.onload = callback;\n\n    req.open(\"GET\", url);\n\n    req.send();\n}"]],"start1":0,"start2":0,"length1":0,"length2":148}]],"length":148}

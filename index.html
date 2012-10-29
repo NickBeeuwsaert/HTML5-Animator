@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello!</title>
+    <script src="io.js"></script>
+    <script src="shim.js"></script>
+    <script src="flexie/flexie.js"></script>
+    <script src="SuperCanvas/superCanvas.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body data-flex data-flex-direction="vertical">
+<div class="header" data-flex data-flex-direction="vertical">
+    <div data-flex data-flex-direction="horizontal" data-flex-weight="1">
+        <div class="layers">
+            <canvas class="layerHeader"></canvas>
+            <canvas class="layers"></canvas>
+        </div>
+        <div class="keyframes" data-flex-weight="1">
+            <canvas class="frameHeader"></canvas>
+            <canvas class="frames"></canvas>
+        </div>
+    </div>
+    <div class="controls" style="height: 25px; background-color: #999;">
+        <div style="display: inline-block; height:1px; width: 200px;"></div>
+        Frame: <input type="number" value="0" min="0" id="frameRange" max="1000"/>
+        Frames Per Second: <input type="number" value="12" min="1" max="99" id="FPS" length="2"/>
+        <input type="checkbox" id="playAnimation"/>
+    </div>
+</div>
+<div class="workarea" data-flex-weight="1" style="overflow: scroll;">
+    <canvas id="anim-canvas">
+    </canvas>
+</div>
+<script src="script.js"></script>
+<script src="workarea.js"></script>
+<script>
+    var doc;
+    var playButton = document.getElementById("playAnimation");
+    var play = function(){
+        setCurrentFrame((getCurrentFrame()+1)%getTotalFrames());
+        if(playButton.checked){
+            play.timeout = setTimeout(play, 1000/12);
+        }else{
+            clearTimeout(play.timeout);
+            play.timeout = undefined;
+        }
+    };
+    playButton.addEventListener("change", function(){
+        if(!play.timeout && this.checked){
+            play();
+        }
+    }, false);
+    var draw = function(doc){
+        drawTimeline(doc);
+        drawWorkspace(doc);
+        requestAnimationFrame(function(){draw(doc);});
+    };
+    openFile("template.svg", function(e){
+        doc = this.responseXML;
+        draw(doc);
+    });
+    
+</script>
+</body>
+</html>

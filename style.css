@@ -1,0 +1,71 @@
+html, body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    font-family: Helvetica, "helvetica neue", arial, sans;
+}
+.header {
+    width: 100%;
+    height: 150px;
+}
+.header > * {
+    height: 100%;
+}
+#timeline {
+    /*background: url(images/grid.svg);*/
+}
+.keyframes, .layers {
+    display: inline-block;
+    float: left;
+}
+.layers {
+    width: 200px;
+    border-right: 1px solid black;
+}
+.header .frameHeader {
+    position: fixed;
+    z-index: 1;
+}
+.header .frames {
+    position: absolute;
+    top: 20px;
+}
+.header .layersHeader {
+    position: fixed;
+    z-index: 100;
+}
+.header .layers .layers {
+    position: absolute;
+    top: 20px;
+    left: 0;
+}
+.header .keyframes {
+    position: relative;
+    overflow:  scroll; /*auto; */
+}
+div.layers, .keyframes {
+    height: 100%;
+}
+.workarea {
+    background: #eee;
+}
+#playAnimation {
+    background: url(images/playpause.svg);
+    width: 17.5px;
+    height: 12.5px;
+    border: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    padding: 5px;
+}
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+}
+::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    border: 2px solid white;
+    background-color: rgba(0, 0, 0, .5);
+}

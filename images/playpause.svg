@@ -1,0 +1,21 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="17.5" height="12.5">
+    <defs>
+        <path id="vBar" d="M0,0 10,0 10,50, 0,50" fill="black"/>
+        <path id="play" d="M0,0 0,50 40,25z" fill="black"/>
+        <g id="pause">
+            <use xlink:href="#vBar" x="0" y="0"/>
+            <use xlink:href="#vBar" x="15" y="0"/>
+        </g>
+        <g id="playPause">
+            <use xlink:href="#play" x="0" y="0"/>
+            <use xlink:href="#pause" x="45" y="0"/>
+        </g>
+    </defs>
+    
+    <use x="0" y="0" xlink:href="#playPause" transform="scale(0.25)"/>
+</svg>
+ 
