@@ -21,3 +21,19 @@ if(!window.requestAnimationFrame){
     }
 }
 })();
+var $ = function(){
+    var cache = {};
+    /**
+     * @param selector the selector to query
+     * @param [docache=true] whether or not use the cache defaults to `true`
+     * @param [doc=document] the document to use, defaults to `document`
+     **/
+    return function(selector, doCache, doc){
+        doCache = doCache || true;
+        doc = doc || document;
+        if(doCache){
+            return cache[selector]===undefined?cache[selector] = doc.querySelector(selector) : cache[selector];
+        }
+        return cache[selector] = doc.querySelector(selector);
+    };
+}();

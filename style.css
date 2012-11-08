@@ -5,6 +5,13 @@ html, body {
     overflow: hidden;
     font-family: Helvetica, "helvetica neue", arial, sans;
 }
+* {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
 .header {
     width: 100%;
     height: 150px;
@@ -15,6 +22,9 @@ html, body {
 #timeline {
     /*background: url(images/grid.svg);*/
 }
+#layerHeader, #frameHeader {
+    background: -webkit-linear-gradient(90deg, #b4b4b4 0%, #d0d0d0 30%, #d0d0d0 100%);
+}
 .keyframes, .layers {
     display: inline-block;
     float: left;
@@ -23,19 +33,19 @@ html, body {
     width: 200px;
     border-right: 1px solid black;
 }
-.header .frameHeader {
+.header #frameHeader {
     position: fixed;
     z-index: 1;
 }
-.header .frames {
+.header #frames {
     position: absolute;
     top: 20px;
 }
-.header .layersHeader {
+.header #layersHeader {
     position: fixed;
     z-index: 100;
 }
-.header .layers .layers {
+#layers {
     position: absolute;
     top: 20px;
     left: 0;
@@ -50,6 +60,9 @@ div.layers, .keyframes {
 .workarea {
     background: #eee;
 }
+.statusbar {
+    height: 16px;
+}
 #playAnimation {
     background: url(images/playpause.svg);
     width: 17.5px;
@@ -58,6 +71,25 @@ div.layers, .keyframes {
     background-position: center;
     background-repeat: no-repeat;
     padding: 5px;
+}
+input {
+    margin: 0;
+}
+.checkbox input {
+    display: none;
+}
+.checkbox {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	background: url(images/play.svg);
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+	background-position: center center;
+    display: inline-block;
+}
+.checkbox.checked {
+	background-image: url(images/pause.svg);
 }
 ::-webkit-scrollbar {
     -webkit-appearance: none;

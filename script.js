@@ -4,217 +4,287 @@ var getCurrentFrame;
 var getTotalFrames;
 var animatorNamespace = "hi";
 var drawTimeline;
+var getLayers;
+
 (function(){
-    var currentFrameNo = 0;
-    var totalFrames = 0;
-    getTotalFrames = function(){
-        return totalFrames;
+    //some defines for frame types
+    var FRAME = {
+        tween: 1<<1,
+        combine: 1<<2,
+        blank: 1<<0
     };
-    var frameSelect = document.querySelector("#frameRange");
-    setCurrentFrame = function(newFrame){
-        frameSelect.value = currentFrameNo = newFrame;
-    };
-    frameSelect.addEventListener("change", function(){
-        setCurrentFrame(parseInt(this.value, 10));
-    }, false);
-    getCurrentFrame = function(){
-        return currentFrameNo;
-    };
-    var layerHeader = document.querySelector(".layers .layerHeader");
-    var frameHeader = document.querySelector(".keyframes .frameHeader");
-    
-    var frames = document.querySelector(".keyframes .frames");
-    var layers = document.querySelector(".layers .layers");
-    
-    
-    var layerHCtx = superCanvas(layerHeader);
-    var frameHCtx = superCanvas(frameHeader);
-    
-    var frameCtx = superCanvas(frames);
-    var layerCtx = superCanvas(layers);
-    //Preperation, create some patterns
-    var canvas = document.createElement("canvas");
-    var context = superCanvas(canvas);
-    canvas.width = 10;
-    canvas.height = 20;
-    
-    context.drawPath("M10,0 10,20 0,20");
-    context.stroke();
-    var grid = context.createPattern(canvas, "repeat");
-    
-    canvas.width = 10*5;
-    canvas.height = 20;
-    
-    context.drawPath("M40,0 50,0 50,20 40,20");
-    context.fillStyle="#eee";
-    context.fill();
-    var visibleLayer = superCanvas.bakeMatrixIntoPath(superCanvas.Matrix().scale(1/28,1/28).scale(20,20), superCanvas.parsePath("M16,8.286C8.454,8.286,2.5,16,2.5,16s5.954,7.715,13.5,7.715c5.771,0,13.5-7.715,13.5-7.715S21.771,8.286,16,8.286zM16,20.807c-2.649,0-4.807-2.157-4.807-4.807s2.158-4.807,4.807-4.807s4.807,2.158,4.807,4.807S18.649,20.807,16,20.807zM16,13.194c-1.549,0-2.806,1.256-2.806,2.806c0,1.55,1.256,2.806,2.806,2.806c1.55,0,2.806-1.256,2.806-2.806C18.806,14.451,17.55,13.194,16,13.194z"));
-    var invisibleLayer = superCanvas.bakeMatrixIntoPath(superCanvas.Matrix().scale(1/28,1/28).scale(20,20),superCanvas.parsePath("M11.478,17.568c-0.172-0.494-0.285-1.017-0.285-1.568c0-2.65,2.158-4.807,4.807-4.807c0.552,0,1.074,0.113,1.568,0.285l2.283-2.283C18.541,8.647,17.227,8.286,16,8.286C8.454,8.286,2.5,16,2.5,16s2.167,2.791,5.53,5.017L11.478,17.568zM23.518,11.185l-3.056,3.056c0.217,0.546,0.345,1.138,0.345,1.76c0,2.648-2.158,4.807-4.807,4.807c-0.622,0-1.213-0.128-1.76-0.345l-2.469,2.47c1.327,0.479,2.745,0.783,4.229,0.783c5.771,0,13.5-7.715,13.5-7.715S26.859,13.374,23.518,11.185zM25.542,4.917L4.855,25.604L6.27,27.02L26.956,6.332L25.542,4.917z"));
-    var everyfill = context.createPattern(canvas, "repeat");
-    var timelineGradient = context.createLinearGradient(0, 0, 0, 20);
-    timelineGradient.addColorStop(0, "#d0d0d0");
-    timelineGradient.addColorStop(0.7, "#d0d0d0");
-    timelineGradient.addColorStop(1, "#b4b4b4");
-    var draw = function(doc){
-        //Draw the headers....
-        //layers
-        layerHeader.width = layerHeader.parentNode.clientWidth;
-        layerHeader.height=20;
-        layerHCtx.fillStyle=timelineGradient;
-        layerHCtx.fillRect(0,0, layerHeader.width, layerHeader.height);
         
-        frameHeader.width = frameHeader.parentNode.clientWidth;
-        frameHeader.height=20;
-        frameHCtx.fillStyle=timelineGradient;
-        frameHCtx.fillRect(0,0, frameHeader.width, frameHeader.height);
-        frameHCtx.save();
-        frameHCtx.rect(0,0,frameHeader.width,3);
-        frameHCtx.rect(0,17,frameHeader.width, 3);
-        frameHCtx.clip();
-        frameHCtx.translate(-frameHeader.parentNode.scrollLeft, 0);
-        frameHCtx.fillStyle=grid;
-        frameHCtx.fillRect(frameHeader.parentNode.scrollLeft,0,frameHeader.width, 20);
-        frameHCtx.restore();
-        frameHCtx.font = "12px monospace";
-        //Draw the frame numbers...
-        frameHCtx.fillStyle="black";
-        frameHCtx.translate(-frameHeader.parentNode.scrollLeft, 0);
-        for(var i = 0; i < frameHeader.parentNode.scrollWidth; i+=5){
-            var width = frameHCtx.measureText(i).width/2;
-            frameHCtx.fillText(i, i*10-width+5, 20-6);
+    /**
+     * @description draws a layer with the name specified. the layer will span the width of its container, and the height of drawLayer.height, which defaults to 20px high
+     * NOTE: the layer will be from start at (0,0) and move to the (canvas.width, drawLayer.height), so translate before this is called
+     * @param name the layers name
+     * @param context the HTML5 canvas context to use to draw
+     * @param [visible=true] the layers visibility, defaults to true
+     * @param [outline=false] whether or not the layer is just drawn as an outline, as opposed to with fill and stroke
+     **/
+    var drawLayer = function(context, name, visible, outline, options){
+        options = options || {};
+        var height = options.height || 20;
+        var font = options.font || "monospace";
+        var fontSize = options.fontSize || "12";
+        
+        var width = context.canvas.width;
+        context.save();
+        context.rect(0, 0, width, height);
+        context.clip();
+        
+        context.fillStyle="#eee";
+        context.fillRect(0,0,width, height);
+        
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.lineTo(width, 0);
+        context.strokeStyle="#333";
+        context.stroke();
+        context.closePath();
+        
+        context.beginPath();
+        context.moveTo(0, height);
+        context.lineTo(width, height);
+        context.strokeStyle="#777";
+        context.stroke();
+        context.closePath();
+        context.fillStyle="black";
+        context.font = [fontSize+"px", font].join(' ');
+        context.fillText(name || "Hi!", 0, height - fontSize/2);
+        
+        context.restore();
+    };
+    /**
+     * goes through els and gives el[name] a context property for the el[name].canvas
+     **/
+    var contextulize = function(els){
+        for(var itemName in els){
+            if(!els.hasOwnProperty(itemName)) continue;
+            els[itemName].context = superCanvas(els[itemName].canvas);
         }
-        //Draw the current Frame
-        frameHCtx.fillStyle = "rgba(255,0,0,0.5)";
-        frameHCtx.fillRect(currentFrameNo*10, 0, 10, 20);
-        //Draw te bodies
-        
-        // layers...
-        layers.width=layers.parentNode.clientWidth;
-        layers.height=layers.parentNode.clientHeight-20;
-        layerCtx.font = "12px monospace";
-        layerCtx.fillStyle="rgb(230,230,230)";
-        layerCtx.fillRect(0,0,layers.width, layers.height);
-        layerCtx.translate(0, -frames.parentNode.scrollTop);
-        var layersArray = [];
-        if(doc){
-            var docRoot = doc.documentElement;
-            var layerNum = 0;
-            for(var i = 0; i != docRoot.childNodes.length; i++){
-                var node = docRoot.childNodes[i];
-                if(node.nodeName == "g"){
-                    layersArray.push(node);
-                    layerCtx.save();
-                    layerCtx.translate(0,layerNum*20);
-                    layerCtx.save();
-                    layerCtx.beginPath();
-                    layerCtx.rect(0,0,layers.width,20);
-                    layerCtx.closePath();
-                    layerCtx.clip();
-                    layerCtx.rect(0,0,layers.width,20);
-                    
-                    layerCtx.fillStyle="rgba(212,208,200,1)";
-                    layerCtx.fill();
-                    layerCtx.strokeStyle="white";
-                    layerCtx.beginPath();
-                    layerCtx.moveTo(0,0);
-                    layerCtx.lineTo(layers.width,0);
-                    layerCtx.stroke();
-                    layerCtx.closePath();
-                    
-                    layerCtx.strokeStyle="rgb(128,128,128)";
-                    layerCtx.beginPath();
-                    layerCtx.moveTo(0,20);
-                    layerCtx.lineTo(layers.width,20);
-                    layerCtx.stroke();
-                    layerCtx.closePath();
-                    
-                    layerCtx.restore();
-                    layerCtx.fillStyle="black";
-                    layerCtx.fillText(node.getAttributeNS(animatorNamespace,"label") || ("layer"+layerNum), 0, 20-6);
-                    
-                    layerCtx.save();
-                    layerCtx.translate(layers.width-28,0);
-                    if(node.style.display=="none"){
-                        layerCtx.drawPath(invisibleLayer);
-                    }else{
-                        layerCtx.drawPath(visibleLayer);
-                    }
-                    layerCtx.fill();
-                    layerCtx.restore();
-                    layerCtx.restore();
-                    layerNum++;
-                }
+    return els;
+    };
+    /**
+     * loops through doc and gets all <g> elements
+     * @param doc the element to get the layers from
+     * @returns {Array} an array of layers
+     **/
+    var getLayers = function(doc){
+        var i = 0;
+        var layers = [];
+        for(i = 0; i < doc.childNodes.length; i++){
+            var element = doc.childNodes[i];
+            if(element.nodeType == 1 && element.nodeName == "g"){
+                layers.push(element);
             }
         }
-        //frames...
-        var maxWidth = frames.parentNode.clientWidth/10;
-        for(i = 0; i < layersArray.length; i++){
-            var mLength = 0;
-            var L = layersArray[i];
-            for(k = 0; k < L.childNodes.length; k++){
-                if(L.childNodes[k].nodeName!="g") continue;
-                mLength += parseInt(L.childNodes[k].getAttributeNS(animatorNamespace, "length"), 10)||0;
-            }
-            maxWidth = Math.max(mLength, maxWidth);
-        }
-        //add 10 to maxWidth so that the user can see a bit past the end
-        totalFrames = maxWidth;
-        frames.width = (maxWidth + 10) * 10;
-        frames.height = Math.max((frames.parentNode.clientHeight-20), layersArray.length*10);
-        frameCtx.fillStyle = grid;
-        frameCtx.fillRect(0,0,frames.width, frames.height);
-        
-        //Now, draw the keyframes
-        for(i = 0; i < layersArray.length; i++){
-            var at = 0;
-            var L = layersArray[i];
-            for(var k = 0; k < L.childNodes.length; k++){
-                var frame = L.childNodes[k];
-                if(frame.nodeName != "g")continue;
-                var l = parseInt(frame.getAttributeNS(animatorNamespace, "length"),10)||1;
-                frameCtx.fillStyle="white";
-                frameCtx.strokeStyle="black";
-                //frameCtx.lineWidth = 0.5;
-                frameCtx.save();
-                frameCtx.translate(at*10, i * 20);
-                frameCtx.beginPath();
-                frameCtx.rect(1,0,l*10-2, 20-1);
-                frameCtx.closePath();
-                frameCtx.fill();
-                //frameCtx.stroke();
-                frameCtx.beginPath();
-                frameCtx.arc(5,15, 2, 0, Math.PI*2, false);
-                frameCtx.fillStyle="black";
-                frameCtx.fill();
-                frameCtx.stroke();
-                frameCtx.closePath();
-                frameCtx.restore();
-                at+=l;
-            }
-        }
-        frameCtx.beginPath();
-        frameCtx.strokeStyle = "rgba(255,0,0,0.5)";
-        frameCtx.moveTo(currentFrameNo*10 + 5,0);
-        frameCtx.lineTo(currentFrameNo*10 + 5, frames.height);
-        frameCtx.stroke();
-        frameCtx.closePath();
-        
-        //requestAnimationFrame(function(){draw(doc);});
+        return layers;
     };
-    var frameClickHandler = function(e){
-        var x = (e.offsetX||e.layerX) + e.target.parentElement.scrollLeft;
-        var frameN = Math.floor(x/10);
-        //console.log(x, frameN);
-        setCurrentFrame(frameN);
+    /**
+     * Draws a keyframe at 0,0 
+     * @param context the HTML5 canvas context to use
+     * @param [options] options to use in the drawing
+     * @param [options.length=1] the length of the frame
+     * @param [options.type=1<<2] bitmask that is the type of the keyframe, blank (1<<0), tween(1<<1), or combine(1<<2)
+     * @param [globalOptions] global options to use
+     * @param [globalOptions.height=20] the height of the keyframe
+     * @param [globalOptions.ratio=1/2] the height to width ratio
+     **/
+    var drawKeyframe = function(context, options, globalOptions){
+        options = options || {};
+        globalOptions = globalOptions || {};
+        var frames = options.length||1;
+        var height = globalOptions.height || 20;
+        var width = height * globalOptions.ratio||0.5;
+        context.save();
+        
+        context.beginPath();
+        context.fillStyle="white";
+        context.strokeStyle="black";
+        context.rect(0,0,(width * frames)-1, height-1);
+        context.stroke();
+        context.fill();
+        context.closePath();
+        
+        context.beginPath();
+        context.fillStyle = "black";
+        context.arc(width/2, height-5, 3, 0, Math.PI*2);
+        context.closePath();
+        context.fill();
+        if(frames > 1 && (options.type||FRAME.combine) & FRAME.tween){
+            context.beginPath();
+            var x =(frames - 1 )*width;
+            context.moveTo(x,height - 7);
+            context.lineTo( Math.max(1, frames - 3)*width,height - 7);
+            context.moveTo(x-3, height - 10);
+            context.lineTo(x, height - 7);
+            context.lineTo(x-3, height - 4);
+            
+            context.stroke();
+            context.closePath();
+        }
+        context.restore();
     };
-    var mousedown = false;
-    frameHeader.addEventListener("mousedown", frameClickHandler, false);
-    frameHeader.addEventListener("mousedown", function(){ mousedown = true; }, false);
-    frameHeader.addEventListener("mouseup", function(){ mousedown = false; }, false);
-    frameHeader.addEventListener("mousemove", function(e){
-        if(mousedown) frameClickHandler(e);
-    }, false);
-    drawTimeline = draw;
-    //
-    //draw();
+    var options = {
+        height: 20,
+        font: "monospace",
+        fontSize: 12,
+        ratio: 1/2,
+        frame: 0,
+        totalFrames: 0
+    };
+    getCurrentFrame = function(){return options.frame;}
+    setCurrentFrame = function(newFrame){options.frame = newFrame;}
+    getTotalFrames = function(){return options.totalFrames;};
+    var header = contextulize({layers: {canvas: $("#layerHeader")},
+                  frames: {canvas: $("#frameHeader")}
+                 });
+    var body = contextulize({layers: {canvas: $("#layers")},
+                  frames: {canvas: $("#frames")}
+                 });
+    var drawHeader = function(doc){
+        header.layers.canvas.width = header.layers.canvas.parentElement.clientWidth;
+        header.layers.canvas.height = 20;
+        
+        header.frames.canvas.width = header.frames.canvas.parentElement.clientWidth;
+        header.frames.canvas.height = 20;
+        //create teh grid...
+        var frame_width = (options.height * options.ratio);
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
+        canvas.width = frame_width; 
+        canvas.height = options.height;
+        
+        ctx.moveTo(canvas.width, 0);
+        ctx.lineTo(canvas.width, (options.height - options.fontSize)/2);
+        ctx.moveTo(canvas.width, canvas.height);
+        ctx.lineTo(canvas.width, canvas.height - (options.height - options.fontSize)/2);
+        ctx.stroke();
+        
+        var pat = ctx.createPattern(canvas, "repeat");
+        header.frames.context.fillStyle=pat;
+        header.frames.context.fillRect(0,0, header.frames.canvas.width,  header.frames.canvas.height);
+        canvas = pat = ctx = null;
+        header.frames.context.fillStyle = "black";
+        //number the frames
+        header.frames.context.font = [options.fontSize+"px", options.font].join(' ');
+        for(var i = 0; i < header.frames.canvas.width / frame_width; i+=5){
+            var str = i;
+            var pos = i-1;
+            if(pos <= 0 ){
+                str = 1;
+                pos++;
+            }
+            var textWidth = header.frames.context.measureText(str+"").width;
+            header.frames.context.fillText(str, pos*frame_width - textWidth/2 + (frame_width / 2), header.frames.canvas.height-options.fontSize/2);
+        };
+        //Now, draw the current frame
+        header.frames.context.fillStyle="rgba(255,0,0,0.5)";
+        header.frames.context.fillRect(options.frame*frame_width, 0,frame_width, options.height);
+    };
+    var maxWidth = 0;
+    var drawBody = function(doc){
+        var i = 0;
+        //Update the sizes...
+        body.layers.canvas.width = body.layers.canvas.parentElement.clientWidth;
+        body.layers.canvas.height = body.layers.canvas.parentElement.clientHeight - 20;
+        
+        body.frames.canvas.width = Math.max(maxWidth, body.frames.canvas.parentElement.clientWidth);
+        body.frames.canvas.height = body.frames.canvas.parentElement.clientHeight - 20;
+        
+        //draw the layers
+        var layers = getLayers(doc);
+        //console.log(layers);
+        for(i = 0; i < layers.length; i++){
+            drawLayer(body.layers.context, "Hi!", true, false, options);
+            body.layers.context.translate(0, options.height);
+        }
+        //Okay, now with that out of the way, we can proceed to draw the keyframes
+        //Create the grid pattern
+        var gridWidth = options.height * options.ratio;
+        var gridHeight = options.height;
+        
+        var canvas = document.createElement("canvas");
+        canvas.width = gridWidth;
+        canvas.height = gridHeight;
+        var context = canvas.getContext("2d");
+        context.moveTo(canvas.width, 0);
+        context.lineTo(canvas.width, canvas.height);
+        context.lineTo(0, canvas.height);
+        context.stroke();
+        
+        var grid = context.createPattern(canvas, "repeat");
+        
+        body.frames.context.fillStyle = grid;
+        body.frames.context.fillRect(0, 0, body.frames.canvas.width, body.frames.canvas.height);
+        
+        //Draw the keyframes
+        var mW = 0;
+        body.frames.context.save();
+        for(i = 0; i < layers.length; i++){
+            var layer = layers[i];
+            body.frames.context.save();
+            var w = 0;
+            for(var f = 0; f < layer.childNodes.length; f++){
+                var frame = layer.childNodes[f];
+                if(frame.nodeName !== "g") continue;
+                var o = {length: frame.getAttributeNS(animatorNamespace, "length") };
+                drawKeyframe(body.frames.context, o, options);
+                w+=o.length;
+                body.frames.context.translate(o.length * (options.height * options.ratio), 0);
+            }
+            mW = Math.max(w, mW);
+            body.frames.context.restore();
+            body.frames.context.translate(0, options.height);
+        }
+        body.frames.context.restore();
+        options.totalFrames = mW;
+        maxWidth = mW * (o.length * (options.height * options.ratio));
+        canvas = null;
+        context = null;
+        grid = null;
+        body.frames.context.setTransform(1,0,0,1,0,0);
+        //draw the position of the current frame
+        body.frames.context.strokeStyle="red";
+        body.frames.context.beginPath();
+        
+        body.frames.context.moveTo(options.frame*gridWidth + gridWidth/2, 0);
+        body.frames.context.lineTo(options.frame*gridWidth + gridWidth/2, body.frames.canvas.height);
+        
+        body.frames.context.stroke();
+        body.frames.context.closePath();
+        
+    };
+    drawTimeline = function(doc){
+        drawHeader(doc);
+        drawBody(doc);
+    };
+    //handle when frames are clicked on
+    var clickHandler = function(e){
+        if(!this.mousedown)return;
+        var width = options.height * options.ratio;
+        setCurrentFrame(Math.floor(e.offsetX / width));
+    };
+    var mouseDownHandler = function(){
+        this.mousedown = true;
+    };
+    var mouseUpHandler = function(){
+        this.mousedown = false;
+    };
+    
+    header.frames.canvas.addEventListener("mousedown", mouseDownHandler);
+    body.frames.canvas.addEventListener("mousedown", mouseDownHandler);
+    header.frames.canvas.addEventListener("mouseup", mouseUpHandler);
+    body.frames.canvas.addEventListener("mouseup", mouseUpHandler);
+    
+    header.frames.canvas.addEventListener("mousedown", clickHandler);
+    body.frames.canvas.addEventListener("mousedown", clickHandler);
+    header.frames.canvas.addEventListener("mouseup", clickHandler);
+    body.frames.canvas.addEventListener("mouseup", clickHandler);
+    
+    
+    header.frames.canvas.addEventListener("mousemove", clickHandler);
+    body.frames.canvas.addEventListener("mousemove", clickHandler);
+    
 })();
